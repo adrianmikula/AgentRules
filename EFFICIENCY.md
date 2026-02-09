@@ -16,7 +16,7 @@
 
 3. Project should have a fast linting tool or command configured for each language, to quicly spot code syntax errors without requiring a full build.
 
-4. Projects should configure a subset of unit tests as 'fast tests', which should have a very quick runtime, and should always run them after making code changes to ensure nothing is broken.
+4. Projects should configure a subset of unit tests as 'fast tests', which should have a very quick runtime, and should always run them after making code changes to ensure nothing is broken.   Add agent rules to always prefer the fast tests when making frequent code changes, and only run the full test suite when tasks are complete or just before pushing commits.
 
 5. All CLI tools and build/test commands should be configured for optimal startup time and speed. 
 
