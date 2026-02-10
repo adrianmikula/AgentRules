@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot with CRaC support
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    
+    // CRaC for checkpoint/restore
+    implementation 'org.crac:crac:1.4.0'
+    
+    // Test dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+// Enable configuration cache for faster builds
+tasks.withType(JavaCompile).configureEach {
+    options.fork = true
+    options.incremental = true
+}
+
+test {
+    useJUnitPlatform()
+    // Fast tests only for dev loop
+    filter {
+        includeTestsMatching "*Fast*"
+    }
+}
+
+task fastTest(type: Test) {
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching "*Fast*"
+    }
+}
+
+task fullTest(type: Test) {
+    useJUnitPlatform()
+}

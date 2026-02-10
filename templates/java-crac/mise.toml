@@ -1,0 +1,11 @@
+[tools]
+java = "21"
+
+[scripts]
+compile = "./gradlew compileJava --no-daemon"
+test-fast = "./gradlew fastTest --no-daemon"
+test-full = "./gradlew fullTest --no-daemon"
+build = "./gradlew build --no-daemon"
+dev = "./gradlew bootRun --no-daemon"
+crac-checkpoint = "java -XX:CRaCCheckpointTo=/tmp/cr -jar build/libs/*.jar"
+crac-restore = "java -XX:CRaCRestoreFrom=/tmp/cr -jar build/libs/*.jar"
