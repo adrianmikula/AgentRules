@@ -1,0 +1,72 @@
+# Linux AppImage Installer - Java Spring Boilerplate
+# Optimized for agentic development velocity
+
+name: java-spring-boilerplate
+version: 1.0.0
+description: Java Spring application with fast agent loop
+
+script:
+  # Build stage
+  - ./gradlew bootJar --no-daemon
+  
+  # Create AppDir structure
+  - mkdir -p AppDir/usr/bin
+  - mkdir -p AppDir/usr/lib
+  - cp build/libs/*.jar AppDir/usr/lib/app.jar
+  
+  # Create wrapper script
+  - cat > AppDir/usr/bin/java-spring-boilerplate <<EOF
+#!/bin/bash
+SCRIPT_DIR="\$(dirname "\$(readlink -f "\$0")")"
+export JAVA_HOME=\${JAVA_HOME:-\$(dirname \$(which java))/..}
+exec "\$JAVA_HOME/bin/java" -jar "\$SCRIPT_DIR/../lib/app.jar" "\$@"
+EOF
+  - chmod +x AppDir/usr/bin/java-spring-boilerplate
+  
+  # Desktop entry
+  - mkdir -p AppDir/usr/share/applications
+  - cat > AppDir/usr/share/applications/java-spring-boilerplate.desktop <<EOF
+[Desktop Entry]
+Name=Java Spring Boilerplate
+Comment=Java Spring application with fast agent loop
+Exec=java-spring-boilerplate
+Icon=java-spring-boilerplate
+Terminal=true
+Type=Application
+Categories=Development;
+EOF
+  
+  # Create icon placeholder
+  - echo "" > AppDir/java-spring-boilerplate.png
+  
+  # Download and install appimagetool
+  - wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+  - chmod +x appimagetool-x86_64.AppImage
+  
+  # Build AppImage
+  - ./appimagetool-x86_64.AppImage AppDir java-spring-boilerplate-$version-x86_64.AppImage
+
+runtime:
+  env:
+    PATH: $APPDIR/usr/bin:$PATH
+
+files:
+  include:
+    - build/libs/
+    - src/main/
+  exclude:
+    - .git/
+    - build/
+    - .gradle/
+
+# Fast agent loop with AppImage
+commands:
+  build: ./gradlew bootJar --no-daemon
+  test: ./gradlew devFast --no-daemon
+  fast-test: ./gradlew devFast --no-daemon
+  lint: ./gradlew checkstyleMain --no-daemon
+
+# Build instructions:
+# 1. Install Java 21
+# 2. Run: ./gradlew bootJar
+# 3. Run: ./appimagetool-x86_64.AppImage AppDir java-spring-boilerplate-1.0.0-x86_64.AppImage

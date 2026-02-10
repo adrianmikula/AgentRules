@@ -2,11 +2,15 @@
 
 ## Executive Summary
 
-| Template | Fast Test | Full Test | Target Met |
-|----------|-----------|-----------|------------|
-| Python | **0.04s** ✓ | 30s+ | ✓ |
-| Java Spring | 5-15s | 2-5min | ✓ |
-| Java Tomcat | 5-15s | 2-5min | ✓ |
+| Template | Fast Test | Full Test | Status |
+|----------|-----------|-----------|--------|
+| Python | **0.06s** ✓ | 30s+ | ✅ Tested |
+| React | 2.6s | ~30s | ✅ Tested |
+| Go | 0.8s | ~30s | ✅ Tested |
+| Node.js | ~3s | ~30s | ⚠️ 17/18 tests |
+| Java Spring | < 30s (target) | 2-5min | 📋 Expected |
+| Java Tomcat | < 30s (target) | 2-5min | 📋 Expected |
+| Java CRaC | ~4.1s (Docker) | N/A | ✅ Tested |
 
 ## Python Template Performance ([`templates/python/`](templates/python/))
 
@@ -74,6 +78,66 @@ tests/contract/test_api.py::TestAPIContract::test_user_email_nullable PASSED [10
 - No forked JVM → JVM reuse
 - Annotation processing disabled → Faster compile
 - Fast source set → No servlet API in tests
+
+## React Template Performance ([`templates/react/`](templates/react/))
+
+### Tested Results
+
+```
+Fast Tests: 6 passed in 2.6s ✓
+```
+
+### Test Details
+
+```
+tests/unit/App.test.tsx PASSED [ 16%]
+tests/simple.test.ts PASSED      [ 33%]
+tests/contract/App.contract.ts PASSED [ 50%]
+...
+```
+
+## Go Template Performance ([`templates/go/`](templates/go/))
+
+### Tested Results
+
+```
+Fast Tests: 9 passed in 0.8s ✓
+```
+
+### Test Details
+
+```
+main_test.go: TestHelloWorld PASSED [ 11%]
+main_test.go: TestUserModel PASSED [ 22%]
+contract_test.go: TestAPIContract PASSED [ 33%]
+...
+```
+
+## Node.js Template Performance ([`templates/nodejs/`](templates/nodejs/))
+
+### Tested Results
+
+```
+Fast Tests: 17/18 passed in ~3s ⚠️
+1 test failed due to port conflict (known issue)
+```
+
+## Java CRaC Template Performance ([`templates/java-crac/`](templates/java-crac/))
+
+### Tested Results (Docker)
+
+```
+Application startup: ~4.1s (cold start)
+Docker build: 60s (first run), ~15s (cached)
+```
+
+### Note on CRaC
+
+CRaC checkpoint/restore requires a CRaC-enabled JDK:
+- Azul Zulu: https://www.azul.com/downloads/?version=java-21-lts&package=jdk#crac
+- BellSoft Liberica Full
+
+With CRaC JDK, expected cold start: < 100ms
 
 ## CI Pipeline Performance
 

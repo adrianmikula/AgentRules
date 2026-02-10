@@ -1,6 +1,6 @@
-# Agentic Dev Velocity CI Pipeline - Node.js
+# Agentic Dev Velocity CI Pipeline - Java Spring
 # Target: Under 10s agentic signal, sub-minute iteration cycles
-# Optimizations: pnpm with caching, parallel jobs, Docker BuildKit
+# Optimizations: sccache, parallel jobs, Docker BuildKit
 
 name: CI
 
@@ -15,14 +15,14 @@ env:
   DOCKER_BUILDKIT: 1
   BUILDKIT_PROGRESS: plain
   SCCACHE_GHA_ENABLED: "true"
-  SCCACHE_CACHE_SIZE: "500M"
+  SCCACHE_CACHE_SIZE: "1G"
 
 jobs:
   # =========================================================================
   # SIGNAL JOB - Fast feedback under 10 seconds
   # =========================================================================
   signal:
-    name: Signal (lint → typecheck → fast tests)
+    name: Signal (compile → unit tests)
     runs-on: ubuntu-latest
     timeout-minutes: 2
     
@@ -31,31 +31,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          sparse-checkout: |
+            src
+            pom.xml
+            .mvn
         
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          version: 9
-          run_install: false
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
         
-      - name: Lint with ESLint
-        run: pnpm run lint || true
+      - name: Compile with sccache
+        run: |
+          export RUSTC_WRAPPER=sccache
+          ./mvnw compile -DskipTests -q
         
-      - name: Typecheck with TypeScript
-        run: pnpm run typecheck || true
-        
-      - name: Run unit tests
-        run: pnpm test -- --testPathPattern=unit --testPathIgnorePatterns=integration
+      - name: Run unit tests (fast)
+        run: |
+          export RUSTC_WRAPPER=sccache
+          ./mvnw test -Dtest='*UnitTest,*Test' -q
         
       - name: Show sccache stats
         run: sccache --show-stats
@@ -74,23 +73,20 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          version: 9
-          run_install: false
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
         
       - name: Run integration tests
-        run: pnpm test -- --testPathPattern=integration
+        run: |
+          export RUSTC_WRAPPER=sccache
+          ./mvnw verify -Pintegration -q
         
   # =========================================================================
   # DOCKER BUILD JOB
@@ -117,9 +113,38 @@ jobs:
           file: Dockerfile
           push: false
           load: true
-          tags: node-app:latest
-          cache-from: type=gha,scope=node-app
-          cache-to: type=gha,mode=max,scope=node-app
+          tags: java-spring:latest
+          cache-from: type=gha,scope=java-spring
+          cache-to: type=gha,mode=max,scope=java-spring
+          
+  # =========================================================================
+  # SECURITY JOB
+  # =========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: signal
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Trivy
+        uses: aquasecurity/trivy-action@master
+        
+      - name: Scan dependencies
+        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL pom.xml
+        
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'java-spring:latest'
+          format: 'table'
+          exit-code: 1
+          severity: 'HIGH,CRITICAL'
           
   # =========================================================================
   # PUBLISH JOB
@@ -129,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.ref == 'refs/heads/main'
-    needs: [signal, confidence, docker]
+    needs: [signal, confidence, docker, security]
     
     steps:
       - name: Checkout code
@@ -137,28 +162,23 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          version: 9
-          run_install: false
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-      
-      - name: Install and build
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
+      - name: Build and package
+        run: ./mvnw package -DskipTests -q
         
-      - name: Publish to npm
+      - name: Publish to Maven Central
         if: startsWith(github.ref, 'refs/tags/')
-        run: pnpm publish
+        run: ./mvnw deploy
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          GPG_KEY_NAME: ${{ secrets.GPG_KEY_NAME }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           
       - name: Push Docker image
         uses: docker/build-push-action@v5
@@ -167,5 +187,5 @@ jobs:
           file: Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
-          cache-from: type=gha,scope=node-app
-          cache-to: type=gha,mode=max,scope=node-app
+          cache-from: type=gha,scope=java-spring
+          cache-to: type=gha,mode=max,scope=java-spring

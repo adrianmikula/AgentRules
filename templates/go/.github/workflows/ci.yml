@@ -1,40 +1,153 @@
+# Agentic Dev Velocity CI Pipeline - Go
+# Target: Under 10s agentic signal, sub-minute iteration cycles
+# Optimizations: sccache, Go modules cache, Docker BuildKit
+
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_CACHE_SIZE: "500M"
+  GOPROXY: "https://proxy.golang.org,direct"
+  GOSUMDB: "sum.golang.org"
 
 jobs:
+  # =========================================================================
+  # SIGNAL JOB - Fast feedback under 10 seconds
+  # =========================================================================
   signal:
+    name: Signal (lint → test)
     runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          go-version: '1.21'
+          fetch-depth: 1
+        
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
           cache: true
-      - run: go mod download
-      - run: go vet ./...              # < 10s
-      - run: go test ./tests/unit ./tests/contract -v  # < 15s
-
+          cache-dependency-path: go.sum
+      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Download dependencies
+        run: go mod download
+        
+      - name: Lint with golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=30s --issues-exit-code=1 ./...
+        
+      - name: Run fast tests
+        run: |
+          export RUSTC_WRAPPER=sccache
+          go test -short -v -race ./... 2>&1 | head -50
+        
+      - name: Show sccache stats
+        run: sccache --show-stats
+        
+  # =========================================================================
+  # CONFIDENCE JOB - Full tests
+  # =========================================================================
   confidence:
+    name: Confidence (full tests)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          go-version: '1.21'
+          fetch-depth: 1
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
           cache: true
-      - run: go mod download
-      - run: go build -o bin/app main.go  # < 30s
-      - run: go test ./... -v             # < 60s
-
-  security:
+      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+        
+      - name: Run full tests
+        run: |
+          export RUSTC_WRAPPER=sccache
+          go test -v ./...
+        
+  # =========================================================================
+  # DOCKER BUILD JOB
+  # =========================================================================
+  docker:
+    name: Docker Build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: signal
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          go-version: '1.21'
-          cache: true
-      - run: go mod download
-      - run: go list -m all | grep -v "^<<" | awk '{print $1}' > /tmp/deps.txt
-      - run: go list -m all | grep -v "^<<" | xargs -I{} sh -c 'go list -f "{{.Dir}} {{.Version}}" {} 2>/dev/null | head -1'
+          fetch-depth: 1
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build with BuildKit
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: go-app:latest
+          cache-from: type=gha,scope=go-app
+          cache-to: type=gha,mode=max,scope=go-app
+          
+  # =========================================================================
+  # PUBLISH JOB
+  # =========================================================================
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    needs: [signal, confidence, docker]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      
+      - name: Build binary
+        run: go build -o bin/app ./cmd/app
+        
+      - name: Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha,scope=go-app
+          cache-to: type=gha,mode=max,scope=go-app

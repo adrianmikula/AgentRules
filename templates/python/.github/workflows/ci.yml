@@ -1,0 +1,226 @@
+# Agentic Dev Velocity CI Pipeline - Python
+# Target: Under 10s agentic signal, sub-minute iteration cycles
+# Optimizations: uv, sccache, BuildKit, parallel jobs
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Enable BuildKit for faster Docker builds
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+  
+  # sccache configuration
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_CACHE_SIZE: "500M"
+  
+  # uv configuration
+  UV_SYSTEM_PYTHON: 1
+
+jobs:
+  # =========================================================================
+  # SIGNAL JOB - Fast feedback under 10 seconds
+  # =========================================================================
+  signal:
+    name: Signal (lint → typecheck → fast tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+        
+      # LINT - ruff (< 1s)
+      - name: Lint with ruff
+        run: uv run ruff check src/ tests/
+        
+      # TYPECHECK - mypy (< 2s)
+      - name: Typecheck with mypy
+        run: uv run mypy src/
+        
+      # FAST TESTS - unit tests only (< 5s)
+      - name: Run fast unit tests
+        run: uv run pytest tests/unit/ -v --tb=short -q
+        
+      # SECURITY - pip-audit (< 2s)
+      - name: Security audit
+        run: uv run pip-audit || true
+        
+  # =========================================================================
+  # CONFIDENCE JOB - Integration tests (parallel with signal)
+  # =========================================================================
+  confidence:
+    name: Confidence (integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      
+      - name: Install dependencies
+        run: uv sync --frozen
+        
+      - name: Run integration tests
+        run: uv run pytest tests/integration/ -v --tb=short
+        
+  # =========================================================================
+  # CONTRACT JOB - API contract tests
+  # =========================================================================
+  contract:
+    name: Contract (API)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      
+      - name: Install dependencies
+        run: uv sync --frozen
+        
+      - name: Run contract tests
+        run: uv run pytest tests/contract/ -v --tb=short
+        
+  # =========================================================================
+  # DOCKER BUILD JOB - With BuildKit caching
+  # =========================================================================
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: signal
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+            storage-driver=overlay2
+      
+      - name: Build with Docker BuildKit
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: myapp:latest
+          cache-from: type=gha,scope=docker
+          cache-to: type=gha,mode=max,scope=docker
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+      
+      - name: Verify Docker image
+        run: docker run --rm myapp:latest python --version
+        
+  # =========================================================================
+  # SECURITY JOB - Vulnerability scanning
+  # =========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: signal
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+      
+      - name: Install dependencies
+        run: uv sync --frozen
+      
+      - name: Run safety check
+        run: uv run safety check --full-report || true
+        
+      - name: Run bandity
+        run: uv run bandity . || true
+        
+  # =========================================================================
+  # PUBLISH JOB - Release on main branch
+  # =========================================================================
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    needs: [signal, confidence, contract, docker, security]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      
+      - name: Install dependencies
+        run: uv sync --frozen
+      
+      - name: Build distribution
+        run: uv build
+      
+      - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/')
+        run: uv publish
+        env:
+          UV_PYPI_URL: https://upload.pypi.org/legacy/
+          UV_PYPI_REPOSITORY_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha,scope=docker
+          cache-to: type=gha,mode=max,scope=docker

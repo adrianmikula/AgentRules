@@ -1,0 +1,72 @@
+# Linux AppImage Installer - Python Boilerplate
+# Optimized for agentic development velocity
+
+name: python-boilerplate
+version: 1.0.0
+description: Python application with fast agent loop
+
+script:
+  # Build stage
+  - uv venv .venv
+  - source .venv/bin/activate
+  - uv pip install -e . --extra dev
+  - uv pip install pyinstaller
+  
+  # Create executable
+  - pyinstaller --onefile --name python-boilerplate src/app/main.py
+  
+  # Create AppDir structure
+  - mkdir -p AppDir/usr/bin
+  - cp dist/python-boilerplate AppDir/usr/bin/
+  - cp src/app/__init__.py AppDir/
+  
+  # Desktop entry
+  - mkdir -p AppDir/usr/share/applications
+  - cat > AppDir/usr/share/applications/python-boilerplate.desktop <<EOF
+[Desktop Entry]
+Name=Python Boilerplate
+Comment=Python application with fast agent loop
+Exec=python-boilerplate
+Icon=python-boilerplate
+Terminal=true
+Type=Application
+Categories=Development;
+EOF
+  
+  # Copy icon if exists
+  - cp src/app/icon.png AppDir/ 2>/dev/null || true
+  
+  # Download and install appimagetool
+  - wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+  - chmod +x appimagetool-x86_64.AppImage
+  
+  # Build AppImage
+  - ./appimagetool-x86_64.AppImage AppDir python-boilerplate-$version-x86_64.AppImage
+
+runtime:
+  env:
+    PATH: $APPDIR/usr/bin:$PATH
+    PYTHONPATH: $APPDIR/usr/lib/python3.12:$PYTHONPATH
+
+files:
+  include:
+    - src/app/
+    - tests/unit/
+    - tests/contract/
+  exclude:
+    - .git/
+    - __pycache__/
+    - .pytest_cache/
+    - .venv/
+
+# Fast agent loop with AppImage
+commands:
+  test: ./python-boilerplate-$version-x86_64.AppImage --test
+  lint: uv run ruff check src/ tests/unit/ tests/contract/
+  typecheck: uv run mypy src/
+  fast-test: uv run pytest tests/unit tests/contract -v --tb=short
+
+# Build instructions:
+# 1. Install build dependencies
+# 2. Run: zip -r9 python-boilerplate-1.0.0-x86_64.AppImage.AppDir usr/ resources/
+# 3. Or use: ./appimagetool-x86_64.AppImage AppDir python-boilerplate-1.0.0-x86_64.AppImage
