@@ -1,0 +1,9 @@
+[tools]
+go = "1.21"
+
+[scripts]
+lint = "go vet ./..."
+test-fast = "go test -v -run 'Test(Home|Health|Users|User|Count|Schema)' ./tests/unit ./tests/contract"
+test-full = "go test -v ./tests/..."
+build = "go build -o bin/app main.go"
+dev = "go run main.go"

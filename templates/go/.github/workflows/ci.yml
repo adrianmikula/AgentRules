@@ -1,0 +1,40 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+      - run: go mod download
+      - run: go vet ./...              # < 10s
+      - run: go test ./tests/unit ./tests/contract -v  # < 15s
+
+  confidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+      - run: go mod download
+      - run: go build -o bin/app main.go  # < 30s
+      - run: go test ./... -v             # < 60s
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+      - run: go mod download
+      - run: go list -m all | grep -v "^<<" | awk '{print $1}' > /tmp/deps.txt
+      - run: go list -m all | grep -v "^<<" | xargs -I{} sh -c 'go list -f "{{.Dir}} {{.Version}}" {} 2>/dev/null | head -1'

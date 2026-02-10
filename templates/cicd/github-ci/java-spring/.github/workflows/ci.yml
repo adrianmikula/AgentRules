@@ -1,0 +1,151 @@
+# GitHub CI Pipeline - Java Spring Boilerplate
+# Fast agent loop principles applied
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.5'
+
+jobs:
+  # Fast signal job - runs in seconds
+  signal:
+    name: Fast Signal
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+      
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            .gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      
+      - name: Fast Compile
+        run: ./gradlew compileJava compileFastJava --no-daemon
+      
+      - name: Fast Tests
+        run: ./gradlew devFast --no-daemon
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-fast
+          path: build/test-results/**
+
+  # Confidence job - runs in minutes (parallel)
+  confidence:
+    name: Confidence
+    needs: signal
+    runs-on: ubuntu-latest
+    if: always() && needs.signal.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            .gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+      
+      - name: Full Tests
+        run: ./gradlew testFull --no-daemon
+      
+      - name: Build JAR
+        run: ./gradlew bootJar --no-daemon
+      
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: app.jar
+          path: build/libs/*.jar
+
+  # Security job - runs in parallel
+  security:
+    name: Security
+    needs: signal
+    runs-on: ubuntu-latest
+    if: always() && needs.signal.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'java-spring-boilerplate'
+          format: 'HTML'
+          args: >
+            --project .
+            --scan .
+            --exclude '**/test/**'
+            --failurePriority 1
+
+  # Publish job - only on main
+  publish:
+    name: Publish
+    needs: [signal, confidence, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      
+      - name: Build
+        run: ./gradlew bootJar --no-daemon
+      
+      - name: Publish to GitHub Packages
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ secrets.UPLOAD_URL }}
+          asset_path: build/libs/*.jar
+          asset_name: app.jar
+          asset_content_type: application/java-archive

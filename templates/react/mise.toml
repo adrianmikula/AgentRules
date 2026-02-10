@@ -1,0 +1,11 @@
+[tools]
+node = "20"
+
+[scripts]
+lint = "npm run lint"
+lint-fix = "npm run lint:fix"
+typecheck = "npm run typecheck"
+test-fast = "npm run test:fast"
+test-full = "npm run test:full"
+dev = "npm run dev"
+build = "npm run build"

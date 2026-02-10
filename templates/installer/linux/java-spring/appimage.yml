@@ -1,0 +1,85 @@
+# Linux AppImage Installer - Java Spring Boilerplate
+# Optimized for agentic development velocity
+
+name: java-spring-boilerplate
+version: 1.0.0
+description: Java Spring application with fast agent loop
+
+script:
+  # Build stage
+  - chmod +x gradlew
+  - ./gradlew bootJar --no-daemon -x test
+  
+  # Create AppDir structure
+  - mkdir -p AppDir/usr/bin
+  - mkdir -p AppDir/usr/share/java-spring-boilerplate
+  - cp build/libs/*.jar AppDir/usr/share/java-spring-boilerplate/app.jar
+  
+  # Create launcher script
+  - cat > AppDir/usr/bin/java-spring-boilerplate <<'EOF'
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+java -jar "$SCRIPT_DIR/../share/java-spring-boilerplate/app.jar" "$@"
+EOF
+  - chmod +x AppDir/usr/bin/java-spring-boilerplate
+  
+  # Desktop entry
+  - mkdir -p AppDir/usr/share/applications
+  - cat > AppDir/usr/share/applications/java-spring-boilerplate.desktop <<'EOF'
+[Desktop Entry]
+Name=Java Spring Boilerplate
+Comment=Java Spring application with fast agent loop
+Exec=java-spring-boilerplate
+Icon=java-spring-boilerplate
+Terminal=true
+Type=Application
+Categories=Development;Java;
+EOF
+  
+  # AppRun (required for AppImage)
+  - cat > AppDir/AppRun <<'EOF'
+#!/bin/bash
+SELF=$(readlink -f "$0")
+HERE="${SELF%/*}"
+export PATH="${HERE}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+exec java -jar "${HERE}/usr/share/java-spring-boilerplate/app.jar" "$@"
+EOF
+  - chmod +x AppDir/AppRun
+  
+  # Download and install appimagetool
+  - wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+  - chmod +x appimagetool-x86_64.AppImage
+  
+  # Build AppImage
+  - ./appimagetool-x86_64.AppImage AppDir java-spring-boilerplate-$version-x86_64.AppImage
+
+runtime:
+  env:
+    JAVA_HOME: $APPDIR/usr/lib/jvm
+    LD_LIBRARY_PATH: $APPDIR/usr/lib:$LD_LIBRARY_PATH
+
+files:
+  include:
+    - src/main/
+    - build/libs/
+  exclude:
+    - .git/
+    - build/
+
+# Java runtime bundled
+dependencies:
+  - libjvm.so
+  - libstdc++.so.6
+  - libz.so.1
+
+# Fast agent loop commands
+commands:
+  test: ./gradlew devFast --no-daemon
+  build: ./gradlew bootJar --no-daemon -x test
+  lint: ./gradlew checkstyleMain --quiet 2>/dev/null || true
+
+# Build instructions:
+# 1. Install JDK 17
+# 2. Run: ./gradlew bootJar --no-daemon -x test
+# 3. Run: ./appimagetool-x86_64.AppImage AppDir java-spring-boilerplate-1.0.0-x86_64.AppImage

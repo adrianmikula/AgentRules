@@ -1,0 +1,9 @@
+[tools]
+node = "20"
+
+[scripts]
+lint = "npm run lint"
+test-fast = "npm run test:fast"
+test-full = "npm run test:full"
+dev = "npm run dev"
+start = "npm start"

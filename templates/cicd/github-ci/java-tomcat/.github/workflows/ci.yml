@@ -1,0 +1,153 @@
+# GitHub CI Pipeline - Java Tomcat Boilerplate
+# Fast agent loop principles applied
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '11'
+  MAVEN_VERSION: '3.9.6'
+
+jobs:
+  # Fast signal job - runs in seconds
+  signal:
+    name: Fast Signal
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Maven
+        uses: actions/setup-maven@v4
+        with:
+          maven-version: ${{ env.MAVEN_VERSION }}
+      
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2
+            target
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      
+      - name: Fast Compile
+        run: mvn compile -q -DskipTests
+      
+      - name: Fast Tests
+        run: mvn test -Dtest=FastTests -DfailIfNoTests=false -q
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-fast
+          path: target/surefire-reports/**
+
+  # Confidence job - runs in minutes (parallel)
+  confidence:
+    name: Confidence
+    needs: signal
+    runs-on: ubuntu-latest
+    if: always() && needs.signal.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Maven
+        uses: actions/setup-maven@v4
+        with:
+          maven-version: ${{ env.MAVEN_VERSION }}
+      
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2
+            target
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+      
+      - name: Full Tests
+        run: mvn test -q
+      
+      - name: Build WAR
+        run: mvn package -DskipTests -q
+      
+      - name: Upload WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: app.war
+          path: target/*.war
+
+  # Security job - runs in parallel
+  security:
+    name: Security
+    needs: signal
+    runs-on: ubuntu-latest
+    if: always() && needs.signal.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'java-tomcat-boilerplate'
+          format: 'HTML'
+          args: >
+            --project .
+            --scan .
+            --exclude '**/test/**'
+            --failurePriority 1
+
+  # Publish job - only on main
+  publish:
+    name: Publish
+    needs: [signal, confidence, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Maven
+        uses: actions/setup-maven@v4
+        with:
+          maven-version: ${{ env.MAVEN_VERSION }}
+      
+      - name: Build WAR
+        run: mvn package -DskipTests -q
+      
+      - name: Publish to GitHub Packages
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ secrets.UPLOAD_URL }}
+          asset_path: target/*.war
+          asset_name: app.war
+          asset_content_type: application/war

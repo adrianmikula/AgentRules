@@ -1,0 +1,8 @@
+app: go-template
+version: 1.0.0
+src:
+  - go
+  - main.go
+  - go.mod
+  - go.sum
+runtime: go
