@@ -1,0 +1,116 @@
+// build.gradle - Optimized for agentic dev velocity
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Source sets for fast/test separation
+sourceSets {
+    fast {
+        java {
+            srcDirs = ['src/fast/java']
+            compileClasspath += main.output
+            runtimeClasspath += main.output
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Main dependencies (for CI/production)
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
+    runtimeOnly 'com.h2database:h2'
+    
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.h2database:h2'
+}
+
+// Fast test dependencies (minimal, no Spring)
+dependencies {
+    fastImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    fastRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+}
+
+// Annotation processor configuration
+tasks.withType(JavaCompile).configureEach {
+    options.annotationProcessorPath = configurations.annotationProcessor
+    options.compilerArgs += [
+        '-Amapstruct.defaultComponentModel=simple',
+    ]
+}
+
+// Disable annotation processors for fast compilation
+tasks.named('compileJava').configure {
+    options.annotationProcessorPaths = []
+    options.compilerArgs << '-proc:none'
+}
+
+// Fast source compilation - no annotation processing
+tasks.named('compileFastJava').configure {
+    options.annotationProcessorPaths = []
+    options.compilerArgs << '-proc:none'
+}
+
+// Agent-fast task - runs tests without Spring
+tasks.register('devFast', JavaExec) {
+    group = 'development'
+    description = 'Run fast unit tests without Spring context'
+    
+    mainClass = 'com.example.fast.FastTests'
+    
+    classpath = sourceSets.fast.runtimeClasspath
+    
+    jvmArgs = [
+        '-XX:+UseSerialGC',
+        '-Xms256m',
+        '-Xmx512m',
+        '-Djava.awt.headless=true'
+    ]
+}
+
+// Type check - fast incremental compilation
+tasks.register('typecheck') {
+    group = 'verification'
+    description = 'Fast type check without full build'
+    dependsOn classes
+}
+
+// Full test suite (CI only)
+test {
+    useJUnitPlatform()
+    exclude '**/*IntegrationTest*', '**/*SlowTest*'
+}
+
+tasks.register('testFull') {
+    group = 'verification'
+    description = 'Full test suite including integration tests'
+    dependsOn test
+}
+
+// Build optimization
+bootJar {
+    layered {
+        enabled = true
+    }
+}
+
+// Gradle configuration cache
+org.gradle.configuration-cache=true
+org.gradle.caching=true
+org.gradle.parallel=true

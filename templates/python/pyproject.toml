@@ -1,0 +1,26 @@
+[project]
+name = "python-boilerplate"
+version = "1.0.0"
+description = "Python boilerplate with agentic dev velocity optimizations"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+incremental = true
+cache_dir = ".mypy_cache"

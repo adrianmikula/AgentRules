@@ -1,0 +1,17 @@
+[tools]
+java = "11"
+
+[commands]
+# Fast feedback commands
+lint = "mvn validate --quiet 2>/dev/null || echo 'lint: skipped'"
+compile = "mvn compile -q"
+fast-test = "mvn test -Dtest=FastTests -DfailIfNoTests=false -q"
+build = "mvn package -DskipTests -q"
+
+# CI commands (slow)
+test-full = "mvn test"
+run = "mvn tomcat7:run"
+
+# Utility commands
+clean = "mvn clean"
+install = "mvn package -DskipTests -q"

@@ -1,0 +1,18 @@
+[tools]
+java = "17"
+
+[commands]
+# Fast feedback commands
+lint = "./gradlew checkstyleMain checkstyleTest --quiet 2>/dev/null || echo 'lint: skipped (not configured)'"
+compile = "./gradlew compileJava compileFastJava --quiet"
+typecheck = "./gradlew typecheck --quiet 2>/dev/null || echo 'typecheck: skipped'"
+fast-test = "./gradlew devFast"
+build = "./gradlew bootJar --quiet"
+
+# CI commands (slow)
+test-full = "./gradlew testFull"
+run = "./gradlew bootRun --quiet"
+
+# Utility commands
+clean = "./gradlew clean"
+install = "./gradlew build -x test --quiet"

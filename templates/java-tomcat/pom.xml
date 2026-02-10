@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- pom.xml - Optimized for Tomcat with agentic dev velocity -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>com.example</groupId>
+    <artifactId>java-tomcat-boilerplate</artifactId>
+    <version>1.0.0</version>
+    <packaging>war</packaging>
+    
+    <name>Java Tomcat Boilerplate</name>
+    <description>Agentic dev velocity optimized Tomcat project</description>
+    
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Disable annotation processing for fast compile -->
+        <maven.compiler.proc>none</maven.compiler.proc>
+        <!-- Surefire configuration for fast tests -->
+        <maven.surefire.version>3.1.2</maven.surefire.version>
+    </properties>
+    
+    <dependencies>
+        <!-- Servlet API (provided by Tomcat) -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        
+        <!-- Fast test dependencies (no servlet API) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <finalName>app</finalName>
+        <plugins>
+            <!-- Fast compiler - no annotation processing -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                    <proc>none</proc>
+                    <fork>true</fork>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                </configuration>
+            </plugin>
+            
+            <!-- Surefire for fast test execution -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.version}</version>
+                <configuration>
+                    <!-- Run only fast tests by default -->
+                    <includes>
+                        <include>**/FastTests.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*ServletTest.java</exclude>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
+                    <!-- No forked JVM - reuse JVM -->
+                    <forkCount>0</forkCount>
+                </configuration>
+            </plugin>
+            
+            <!-- Tomcat plugin for deployment -->
+            <plugin>
+                <groupId>org.apache.tomcat.maven</groupId>
+                <artifactId>tomcat7-maven-plugin</artifactId>
+                <version>2.2</version>
+                <configuration>
+                    <path>/</path>
+                    <port>8080</port>
+                    <contextFile>src/main/webapp/WEB-INF/context.xml</contextFile>
+                </configuration>
+            </plugin>
+            
+            <!-- WAR plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
