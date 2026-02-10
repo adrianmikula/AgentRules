@@ -1,0 +1,42 @@
+# Docker Compose for Java CRaC Template
+# Requires Docker Desktop with WSL2 backend (Linux containers)
+#
+# NOTE: CRaC checkpoint/restore requires a CRaC-enabled JDK.
+# Standard Docker images provide Java 21 without CRaC support.
+# For sub-second startup, use a CRaC-enabled JDK locally.
+
+services:
+  # Stage 1: Build the application
+  builder:
+    build:
+      context: .
+      target: builder
+    container_name: java-crac-builder
+    volumes:
+      - ./build:/app/build
+
+  # Stage 2: Development environment
+  dev:
+    build:
+      context: .
+      target: dev
+    container_name: java-crac-dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - builder
+    # Run with: docker compose up dev
+
+  # Stage 3: Production environment
+  production:
+    build:
+      context: .
+      target: production
+    container_name: java-crac-prod
+    ports:
+      - "8080:8080"
+    depends_on:
+      - builder
+    # Run with: docker compose up production

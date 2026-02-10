@@ -20,9 +20,6 @@ dependencies {
     // Spring Boot with CRaC support
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
-    // CRaC for checkpoint/restore
-    implementation 'org.crac:crac:1.4.0'
-    
     // Test dependencies
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.junit.jupiter:junit-jupiter'
