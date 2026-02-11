@@ -1,0 +1,20 @@
+-- selene.toml
+-- Fast Lua linter configuration for Roblox
+
+std = "roblox"
+
+exclude = ["node_modules/", "out/", ".git/"]
+
+[diagnostics]
+unused-variable = "disabled"
+unused-import = "disabled"
+passing-disabled-lint = "enabled"
+
+[globals]
+-- Roblox global types
+game = "any"
+script = "any"
+Enum = "any"
+CFrame = "any"
+Vector3 = "any"
+Instance = "any"

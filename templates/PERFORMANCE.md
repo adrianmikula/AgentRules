@@ -5,6 +5,8 @@
 | Language | Runtime | Lint | Compile | Fast Test | CI Signal | Docker Warm Build | Docker Lint | Hot Reload | Installer |
 |----------|---------|------|---------|-----------|-----------|--------------------|-------------|------------|-----------|
 | **Python** | uv + FastAPI | 0.5s | N/A | **0.07s** | ~2s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: 5s |
+| **Python** | **uv + Django** | 0.5s | 1s | **< 1s** | **~2s** | **< 10s** | ~3s | **< 500ms** | DEB: **< 5s** |
+| **TypeScript** | **Roblox-TS + Knit** | **< 1s** | 2-3s | **< 1s** | **~8-10s** | **< 30s** | ~3s | **< 1s** | N/A |
 | **React** | Vite + Node | 1s | 3s | 2.6s | ~10s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: **< 5s** |
 | **Go** | Go 1.21 | 0.5s | 2s | **0.8s** | ~5s | **< 5s** | ~3s | < 1s | AppImage: 30s |
 | **Node.js** | Node 20 + pnpm | 1s | N/A | 3s | ~10s | **< 5s** | ~3s | < 1s | N/A |

@@ -1,0 +1,96 @@
+# .github/workflows/ci.yml - Parallel CI pipeline for Roblox-TS
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Fast job 1: Lint (< 1s)
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install selene
+        run: npm install -g selene
+
+      - name: Lint with selene
+        run: selene . --config selene.toml
+
+  # Fast job 2: Type check (< 2s)
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check with rbx-tsc
+        run: npx rbx-tsc --noEmit
+
+  # Fast job 3: Unit tests (< 1s)
+  fast-test:
+    name: Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run fast unit tests
+        run: npm test -- --testPathPattern="src/tests/unit" --passWithNoTests
+
+  # Slow job: Full build (CI only)
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, fast-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with rbx-tsc
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lua-output
+          path: out/
+          retention-days: 1
+
+# Total signal time: ~5-8s (parallel jobs)
