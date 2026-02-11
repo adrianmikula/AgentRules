@@ -2,15 +2,15 @@
 
 ## Performance Grid
 
-| Language | Runtime | Lint | Compile | Fast Test | Full Test | CI Signal | Docker Build | Installer |
-|----------|---------|------|---------|-----------|-----------|-----------|---------------|-----------|
-| **Python** | uv + FastAPI | 0.5s | N/A | **0.07s** | 30s | ~2s | < 30s | AppImage: 20s / DEB: 5s |
-| **React** | Vite + Node | 1s | 3s | 2.6s | 30s | ~10s | < 30s | N/A |
-| **Go** | Go 1.21 | 0.5s | 2s | **0.8s** | 15s | ~5s | < 30s | AppImage: 30s |
-| **Node.js** | Node 20 + pnpm | 1s | N/A | 3s | 30s | ~10s | < 30s | N/A |
-| **Java** | Spring Boot 3 | 5s | 15s | 15s | 3min | ~60s | < 60s | AppImage: 120s |
-| **Java** | Tomcat 10 | 5s | 15s | 15s | 3min | ~60s | < 60s | N/A |
-| **Java** | CRaC 21 (Linux) | 5s | 15s | 4s (cold) | N/A | ~60s | < 60s | N/A |
+| Language | Runtime | Lint | Compile | Fast Test | CI Signal | Docker Warm Build | Docker Lint | Hot Reload | Installer |
+|----------|---------|------|---------|-----------|-----------|--------------------|-------------|------------|-----------|
+| **Python** | uv + FastAPI | 0.5s | N/A | **0.07s** | ~2s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: 5s |
+| **React** | Vite + Node | 1s | 3s | 2.6s | ~10s | **< 10s** | ~3s | < 1s | N/A |
+| **Go** | Go 1.21 | 0.5s | 2s | **0.8s** | ~5s | **< 5s** | ~3s | < 1s | AppImage: 30s |
+| **Node.js** | Node 20 + pnpm | 1s | N/A | 3s | ~10s | **< 5s** | ~3s | < 1s | N/A |
+| **Java** | Spring Boot 3 | 5s | 15s | 15s | ~60s | **< 15s** | ~3s | < 5s | AppImage: 120s |
+| **Java** | Tomcat 10 | 5s | 15s | 15s | ~60s | **< 15s** | ~3s | < 5s | N/A |
+| **Java** | CRaC 21 (Linux) | 5s | 15s | 4s | ~60s | **< 15s** | ~3s | **< 100ms** | N/A |
 
 ## KPI Definitions
 
@@ -19,9 +19,10 @@
 | **Lint** | Static analysis check | < 2s |
 | **Compile** | Source → Binary | < 30s |
 | **Fast Test** | Unit tests only (no framework boot) | < 5s |
-| **Full Test** | All tests (unit + integration + contract) | < 5min |
 | **CI Signal** | Lint + Compile + Fast Test in CI | < 60s |
-| **Docker Build** | Multi-stage build with cache | < 60s |
+| **Docker Warm Build** | Multi-stage build with GHA cache | < 30s |
+| **Docker Lint** | Dockerfile validation | < 5s |
+| **Hot Reload** | Live code reloading | < 2s |
 | **Installer** | Platform-specific package build | < 120s |
 
 ## Performance Tiers
@@ -35,28 +36,62 @@
 
 ### Tier 2: Sub-60s Feedback
 
-| Template | Compile | Fast Test | CI Signal |
-|----------|---------|-----------|-----------|
-| Java Spring | 15s | 15s | ~60s |
-| Java Tomcat | 15s | 15s | ~60s |
-| React | 3s | 2.6s | ~10s |
-| Node.js | N/A | 3s | ~10s |
+| Template | Compile | Recompile | Fast Test | Hot Reload | CI Signal |
+|----------|---------|-----------|-----------|------------|-----------|
+| Java Spring | 15s | < 5s | 15s | < 5s | ~60s |
+| Java Tomcat | 15s | < 5s | 15s | < 5s | ~60s |
+| React | 3s | < 1s | 2.6s | **< 1s** | ~10s |
+| Node.js | N/A | N/A | 3s | **< 1s** | ~10s |
 
 ### Tier 3: Special Purpose
 
-| Template | Startup | Cold Start | Use Case |
-|----------|---------|------------|----------|
-| Java CRaC | 15s compile | **< 100ms** (restored) | Serverless |
+| Template | Startup | Cold Start | Hot Reload | Use Case |
+|----------|---------|------------|------------|----------|
+| Java CRaC | 15s compile | **< 100ms** (restored) | **< 100ms** | Serverless |
+| Python FastAPI | 2s | N/A | **< 1s** | Web APIs |
+| React Vite | 3s | N/A | **< 1s** | Frontend |
+| Go Echo | 1s | N/A | **< 1s** | APIs |
+| Node Express | 1s | N/A | **< 1s** | APIs |
 
 ## Docker Performance Matrix
 
-| Template | Builder | Dev | Production | Cache Hit |
-|----------|---------|-----|------------|-----------|
-| Python | 30s | 10s | 10s | < 5s |
-| Java Spring | 60s | 30s | 30s | < 15s |
-| Java Tomcat | 60s | 30s | 30s | < 15s |
-| Go | 30s | 10s | 10s | < 5s |
-| Node.js | 30s | 10s | 10s | < 5s |
+| Template | Docker Warm Build | Docker Lint | Cache Size |
+|----------|--------------------|-------------|------------|
+| Python | **< 10s** | ~3s | ~500MB |
+| Java Spring | **< 15s** | ~3s | ~1GB |
+| Java Tomcat | **< 15s** | ~3s | ~1GB |
+| Go | **< 5s** | ~3s | ~300MB |
+| Node.js | **< 5s** | ~3s | ~300MB |
+
+## Docker Cache Strategy Comparison
+
+| Strategy | Build Time (Cold) | Build Time (Warm) | Cache Persistence | Setup |
+|----------|-------------------|-------------------|-------------------|-------|
+| No cache | ~60s | ~60s | - | None |
+| BuildKit only | ~50s | ~20s | Session | Built-in |
+| GHA cache | ~50s | **< 10s** | GitHub | `cache-from: type=gha` |
+| Registry cache | ~40s | **< 10s** | Registry | `cache-from: type=registry` |
+| Inline cache | ~50s | ~15s | Image | `BUILDKIT_INLINE_CACHE=1` |
+
+## Advanced Docker Optimizations
+
+| Optimization | Benefit | Implementation |
+|--------------|---------|---------------|
+| Cache mounts | ~5-10x dependency install | `--mount=type=cache,target=/var/cache/apt` |
+| GHA cache | ~6x faster warm builds | `type=gha,scope=docker` |
+| Registry cache | Cross-branch sharing | `type=registry,ref=...` |
+| Inline cache | Self-contained | `BUILDKIT_INLINE_CACHE=1` |
+| Layer ordering | Better cache hits | Dependencies → Source |
+| Multi-stage | Smaller images | Builder → Dev → Prod |
+| Parallel jobs | Faster CI | Lint + Build in parallel |
+
+## Docker Build Targets
+
+| Command | Description | Target |
+|---------|-------------|--------|
+| `docker-lint` | Dockerfile validation | < 5s |
+| `docker-build` | Warm build with GHA cache | < 30s |
+| `docker-rebuild` | Cold build without cache | < 60s |
 
 ## Installer Performance
 
@@ -136,13 +171,36 @@
 
 ## Performance Goals Achievement
 
-| Goal | Target | Best Achievable | Template |
-|------|--------|-----------------|----------|
-| Fast feedback | < 5s | **0.07s** | Python |
-| CI signal | < 60s | **~2s** | Python |
-| Docker build | < 60s | **< 5s** | Python/Go (warm) |
-| Installer | < 120s | **~5s** | Python DEB |
-| Cold start | < 100ms | **< 100ms** | Java CRaC |
+| Goal | Target | Best |
+|------|--------|------|
+| Fast feedback | < 5s | **0.07s** |
+| CI signal | < 60s | **~2s** |
+| Docker Warm Build | < 30s | **< 5s** |
+| Docker Lint | < 5s | **~3s** |
+| Hot Reload | < 2s | **< 1s** |
+| Installer | < 120s | **~5s** |
+| Cold start | < 100ms | **< 100ms** |
+
+## Hot Reload Performance
+
+| Template | Tool | Hot Reload Time | Mechanism |
+|----------|------|-----------------|----------|
+| Python | uvicorn --reload | **< 1s** | File watcher |
+| React | Vite HMR | **< 1s** | WebSocket |
+| Go | air | **< 1s** | File watcher |
+| Node.js | nodemon | **< 1s** | File watcher |
+| Java Spring | spring-boot-devtools | < 5s | Class reload |
+| Java Tomcat | JRebel | < 5s | Class reload |
+| Java CRaC | CRaC restore | **< 100ms** | Checkpoint |
+
+## Recompile Performance
+
+| Template | Full Compile | Incremental |
+|----------|--------------|-------------|
+| Go | ~2s | **< 0.5s** |
+| Java Spring | ~15s | **< 5s** |
+| Java Tomcat | ~15s | **< 5s** |
+| React | ~3s | **< 1s** |
 
 ## Quick Reference Commands
 
@@ -157,6 +215,11 @@ make build-deb          # ~5s
 ./gradlew devFast       # ~15s
 make signal             # ~60s
 
+# Docker
+make docker-lint        # ~3s
+make docker-build       # < 10s (warm)
+make docker-rebuild     # ~30s (no cache)
+```
 # Go
 go test ./...           # 0.8s
 make signal             # ~5s
