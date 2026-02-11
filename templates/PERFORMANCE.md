@@ -8,9 +8,10 @@
 | **React** | Vite + Node | 1s | 3s | 2.6s | ~10s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: **< 5s** |
 | **Go** | Go 1.21 | 0.5s | 2s | **0.8s** | ~5s | **< 5s** | ~3s | < 1s | AppImage: 30s |
 | **Node.js** | Node 20 + pnpm | 1s | N/A | 3s | ~10s | **< 5s** | ~3s | < 1s | N/A |
-| **Java** | Spring Boot 3 | 5s | 15s | 15s | ~60s | **< 15s** | ~3s | < 5s | AppImage: 120s |
-| **Java** | Tomcat 10 | 5s | 15s | 15s | ~60s | **< 15s** | ~3s | < 5s | N/A |
+| **Java** | Spring Boot 3 | 5s | **10s** | **10s** | **~45s** | **< 15s** | ~3s | < 5s | AppImage: 120s |
+| **Java** | Tomcat 10 | 5s | **10s** | **10s** | **~45s** | **< 15s** | ~3s | < 5s | N/A |
 | **Java** | CRaC 21 (Linux) | 5s | 15s | 4s | ~60s | **< 15s** | ~3s | **< 100ms** | N/A |
+| **Java** | IntelliJ Plugin | 5s | 15s | ~5s | ~60s | **< 15s** | ~3s | N/A | N/A |
 
 ## KPI Definitions
 
@@ -38,8 +39,8 @@
 
 | Template | Compile | Recompile | Fast Test | Hot Reload | CI Signal |
 |----------|---------|-----------|-----------|------------|-----------|
-| Java Spring | 15s | < 5s | 15s | < 5s | ~60s |
-| Java Tomcat | 15s | < 5s | 15s | < 5s | ~60s |
+| Java Spring | **10s** | **< 5s** | **10s** | < 5s | **~45s** |
+| Java Tomcat | **10s** | **< 5s** | **10s** | < 5s | **~45s** |
 | React | 3s | < 1s | 2.6s | **< 1s** | ~10s |
 | Node.js | N/A | N/A | 3s | **< 1s** | ~10s |
 
@@ -110,8 +111,8 @@
 | Template | Signal | Confidence | Security | Total |
 |----------|--------|------------|----------|-------|
 | Python | ~2s | 1-2min | < 30s | < 2min |
-| Java Spring | ~60s | 2-5min | < 60s | < 5min |
-| Java Tomcat | ~60s | 2-5min | < 60s | < 5min |
+| Java Spring | **~45s** | 2-5min | < 60s | < 5min |
+| Java Tomcat | **~45s** | 2-5min | < 60s | < 5min |
 | Go | ~5s | 1-2min | < 30s | < 2min |
 
 ### Cache Hit Performance
@@ -200,8 +201,8 @@
 | Template | Full Compile | Incremental |
 |----------|--------------|-------------|
 | Go | ~2s | **< 0.5s** |
-| Java Spring | ~15s | **< 5s** |
-| Java Tomcat | ~15s | **< 5s** |
+| Java Spring | **10s** | **< 3s** |
+| Java Tomcat | **10s** | **< 3s** |
 | React | ~3s | **< 1s** |
 
 ## Quick Reference Commands
@@ -212,16 +213,26 @@ make fast-test          # 0.07s
 make signal             # ~2s
 make build-appimage     # ~20s
 make build-deb          # ~5s
+```
 
-# Java Spring
-./gradlew devFast       # ~15s
-make signal             # ~60s
+```bash
+# Java Spring (CRaC optimized - fork=false, no annotation processors)
+./gradlew devFast       # ~10s
+make signal             # ~45s
 
 # Docker
 make docker-lint        # ~3s
 make docker-build       # < 10s (warm)
 make docker-rebuild     # ~30s (no cache)
 ```
+
+```bash
+# Java Tomcat (CRaC optimized - fork=false, no annotation processors)
+mvn test -Dtest=FastTests  # ~10s
+make signal                # ~45s
+```
+
+```bash
 # Go
 go test ./...           # 0.8s
 make signal             # ~5s

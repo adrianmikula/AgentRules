@@ -1,0 +1,94 @@
+# IntelliJ Plugin CI Pipeline - Agentic Dev Velocity
+# Optimizations: sccache, parallel jobs, Docker BuildKit
+
+name: IntelliJ Plugin CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # sccache configuration
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_CACHE_SIZE: "500M"
+  
+  # Gradle
+  GRADLE_OPTS: "-Xmx2048m"
+
+jobs:
+  # =========================================================================
+  # SIGNAL JOB - Fast feedback (< 15s)
+  # =========================================================================
+  signal:
+    name: Signal (compile + fast tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: wrapper
+      
+      - name: Restore sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+      
+      - name: Compile
+        run: ./gradlew compileJava -q
+        
+      - name: Run fast tests
+        run: ./gradlew testFast -q
+
+  # =========================================================================
+  # BUILD JOB - Plugin build
+  # =========================================================================
+  build:
+    name: Build Plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: signal
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      
+      - name: Restore sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+      
+      - name: Build plugin
+        run: ./gradlew buildPlugin -q
+        
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin
+          path: build/distributions/
+
+# Performance Targets:
+# Signal: < 15s
+# Build: < 60s

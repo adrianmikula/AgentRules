@@ -1,0 +1,38 @@
+# IntelliJ Plugin .gitignore
+# Based on IntelliJ default + Gradle
+
+# Bytecode
+*.class
+*.jar
+*.zip
+
+# Build
+build/
+out/
+.idea_modules/
+.iml
+.ipr
+.iws
+.project
+.classpath
+.settings/
+gradle-app.setting
+
+# Gradle
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

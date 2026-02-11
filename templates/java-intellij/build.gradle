@@ -1,0 +1,130 @@
+# IntelliJ Plugin Project - Agentic Dev Velocity
+# Optimized for sub-10s signal with IntelliJ Test Framework
+
+pluginVersion = 1.0.0
+pluginName = "java-intellij-plugin"
+
+# =============================================================================
+# BUILD CONFIGURATION
+# =============================================================================
+
+plugins {
+    id("java")
+    id("org.jetbrains.intellij") version "1.17.4"
+}
+
+group = "com.example"
+version = pluginVersion
+
+# =============================================================================
+# REPOSITORIES
+# =============================================================================
+
+repositories {
+    mavenCentral()
+}
+
+# =============================================================================
+# DEPENDENCIES
+# =============================================================================
+
+dependencies {
+    // IntelliJ Platform SDK
+    compileOnly("com.jetbrains:platform-core:241.0")
+    compileOnly("com.jetbrains:platform-impl:241.0")
+    
+    // Testing
+    testImplementation("com.jetbrains:platform-test-framework:241.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+    
+    // Logging
+    implementation("org.slf4j:slf4j-api:2.0.9")
+}
+
+// =============================================================================
+// INTELLIJ CONFIGURATION
+// =============================================================================
+
+intellij {
+    pluginName.set(pluginName)
+    version.set("2024.1")
+    type.set("IC") // IntelliJ IDEA Community
+    
+    // Download sources
+    downloadSources.set(false)
+    
+    // Plugin dependencies
+    plugins.set(listOf(
+        "java",
+        "kotlin"
+    ))
+}
+
+// =============================================================================
+// JAVA CONFIGURATION
+# Java compilation settings for fast builds
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Disable annotation processors for faster builds
+tasks.withType<JavaCompile> {
+    options.isFork = false
+    options.isAnnotationProcessorPathEmpty = true
+}
+
+// =============================================================================
+// GRADLE CONFIGURATION
+# Enable configuration cache for faster builds
+org.gradle.configuration-cache = true
+org.gradle.caching = true
+
+# Parallel execution
+org.gradle.parallel = true
+
+# Incremental compilation
+org.gradle.java.compile增量 = true
+
+// =============================================================================
+// TASKS
+// =============================================================================
+
+tasks.register("devFast") {
+    group = "development"
+    description = "Run fast tests without full plugin build"
+    dependsOn("testFast")
+}
+
+tasks.register("testFast") {
+    group = "testing"
+    description = "Run unit tests only (no IDE integration)"
+    dependsOn("test")
+    doLast {
+        println("=== Fast Test Mode: IntelliJ Test Framework ===")
+    }
+}
+
+tasks.register("signal") {
+    group = "ci"
+    description = "Fast CI signal: compile + fast tests"
+    dependsOn("compileJava", "testFast")
+}
+
+tasks.register("cleanCache") {
+    group = "maintenance"
+    description = "Clean build caches"
+    dependsOn("clean")
+    doLast {
+        println("Cache cleaned!")
+    }
+}
+
+// =============================================================================
+// PERFORMANCE TARGETS
+# Fast compilation: < 15s
+# Fast tests: < 10s (no IDE boot)
+# CI signal: < 30s
+# Docker build: < 60s

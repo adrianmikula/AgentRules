@@ -1,6 +1,6 @@
 # Java Tomcat Boilerplate - Command Catalogue
 
-.PHONY: fast-test typecheck test-full run build clean
+.PHONY: fast-test typecheck test-full run build clean cache-warmup
 
 # Agent-fast command (seconds) - ALWAYS run this
 fast-test:
@@ -29,3 +29,7 @@ clean:
 # Full compile
 compile:
 	@mvn compile
+
+# Warm Maven cache for CI
+cache-warmup:
+	@mvn clean install -DskipTests --no-transfer-progress

@@ -51,7 +51,7 @@
     <build>
         <finalName>app</finalName>
         <plugins>
-            <!-- Fast compiler - no annotation processing -->
+            <!-- Fast compiler - no annotation processing (CRaC optimization) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -60,8 +60,8 @@
                     <source>11</source>
                     <target>11</target>
                     <proc>none</proc>
-                    <fork>true</fork>
-                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                    <fork>false</fork> <!-- No forked JVM for instant feedback -->
+                    <useIncrementalCompilation>true</useIncrementalCompilation>
                 </configuration>
             </plugin>
             

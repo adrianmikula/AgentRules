@@ -47,7 +47,7 @@ dependencies {
     fastRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
 }
 
-// Annotation processor configuration
+// Annotation processor configuration - DISABLED for fast compilation
 tasks.withType(JavaCompile).configureEach {
     options.annotationProcessorPath = configurations.annotationProcessor
     options.compilerArgs += [
@@ -55,16 +55,20 @@ tasks.withType(JavaCompile).configureEach {
     ]
 }
 
-// Disable annotation processors for fast compilation
+// Disable annotation processors for fast compilation (CRaC optimization)
 tasks.named('compileJava').configure {
     options.annotationProcessorPaths = []
     options.compilerArgs << '-proc:none'
+    options.fork = false  // No forked JVM for instant feedback
+    options.incremental = true  // Incremental compilation
 }
 
-// Fast source compilation - no annotation processing
+// Fast source compilation - no annotation processing (CRaC optimization)
 tasks.named('compileFastJava').configure {
     options.annotationProcessorPaths = []
     options.compilerArgs << '-proc:none'
+    options.fork = false  // No forked JVM
+    options.incremental = true
 }
 
 // Agent-fast task - runs tests without Spring
