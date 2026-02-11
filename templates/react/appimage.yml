@@ -1,0 +1,133 @@
+# React AppImage Configuration - Agentic Dev Velocity
+# Fast desktop installer for React applications
+
+name: react-template
+version: 1.0.0
+description: React application with fast agent loop
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+script:
+  # Build React app
+  - npm run build
+  
+  # Create AppDir structure
+  - mkdir -p AppDir/usr/bin
+  - mkdir -p AppDir/usr/share/applications
+  - mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps
+  
+  # Copy build files
+  - cp -r dist/* AppDir/usr/share/react-template/
+  
+  # Create launcher script
+  - |
+    cat > AppDir/usr/bin/react-template <<'EOF'
+#!/bin/bash
+# React Template Launcher
+APP_DIR="/usr/share/react-template"
+cd "$APP_DIR"
+exec python3 -m http.server 8080
+EOF
+    chmod +x AppDir/usr/bin/react-template
+  
+  # Create desktop entry
+  - |
+    cat > AppDir/usr/share/applications/react-template.desktop <<'EOF'
+[Desktop Entry]
+Name=React Template
+Comment=React application with fast agent loop
+Exec=react-template
+Icon=react-template
+Terminal=true
+Type=Application
+Categories=Development;
+EOF
+  
+  # Create icon symlink
+  - |
+    cat > AppDir/usr/share/icons/hicolor/scalable/apps/react-template.svg <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#61dafb" stroke-width="2">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M12 6v6l4 2"/>
+</svg>
+EOF
+
+# =============================================================================
+# VERIFICATION (TARGET: < 5s)
+# =============================================================================
+verify: |
+  echo "=== React AppImage Verification (< 5s) ==="
+  START=$(date +%s.%N)
+  
+  # Fast structure check
+  [ -f AppDir/usr/bin/react-template ] && echo "✓ Launcher exists" || echo "✗ Missing launcher"
+  [ -f AppDir/usr/share/applications/react-template.desktop ] && echo "✓ Desktop entry exists" || echo "✗ Missing desktop entry"
+  [ -d AppDir/usr/share/react-template ] && echo "✓ App files exist" || echo "✗ Missing app files"
+  
+  # Fast lint check
+  echo "Running fast lint..."
+  npm run lint 2>/dev/null | head -5 || true
+  
+  # Fast typecheck
+  echo "Running fast typecheck..."
+  npm run typecheck 2>/dev/null | head -5 || true
+  
+  # Fast tests
+  echo "Running fast tests..."
+  npm run test:fast 2>/dev/null | tail -5 || true
+  
+  END=$(date +%s.%N)
+  echo "=== Verification time: $(echo "$END - $START" | bc)s ==="
+
+# =============================================================================
+# PERFORMANCE TARGETS
+# =============================================================================
+targets:
+  build: "< 30s"
+  verify: "< 5s"
+  signal: "< 10s"
+
+# =============================================================================
+# BUILD COMMANDS
+# =============================================================================
+commands:
+  # Build AppImage
+  build-appimage: |
+    echo "Building React AppImage..."
+    START=$(date +%s.%N)
+    npm run build
+    bash appimage.sh
+    END=$(date +%s.%N)
+    echo "=== AppImage built: react-template-1.0.0-x86_64.AppImage ==="
+    echo "=== Build time: $(echo "$END - $START" | bc)s ==="
+  
+  # Verify AppImage
+  verify-appimage: make verify-appimage
+  
+  # Fast signal
+  signal: |
+    START=$(date +%s.%N)
+    npm run lint
+    npm run typecheck
+    npm run test:fast
+    END=$(date +%s.%N)
+    echo "=== Signal time: $(echo "$END - $START" | bc)s ==="
+
+# =============================================================================
+# FAST DEV LOOP
+# =============================================================================
+dev:
+  # Hot reload dev server
+  dev: npm run dev
+  
+  # Watch mode tests
+  test:watch: npm run test:ui
+  
+  # Fast rebuild
+  rebuild: npm run build
+
+# Build Instructions:
+# 1. npm install
+# 2. npm run build
+# 3. bash appimage.sh

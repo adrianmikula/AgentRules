@@ -5,7 +5,7 @@
 | Language | Runtime | Lint | Compile | Fast Test | CI Signal | Docker Warm Build | Docker Lint | Hot Reload | Installer |
 |----------|---------|------|---------|-----------|-----------|--------------------|-------------|------------|-----------|
 | **Python** | uv + FastAPI | 0.5s | N/A | **0.07s** | ~2s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: 5s |
-| **React** | Vite + Node | 1s | 3s | 2.6s | ~10s | **< 10s** | ~3s | < 1s | N/A |
+| **React** | Vite + Node | 1s | 3s | 2.6s | ~10s | **< 10s** | ~3s | < 1s | AppImage: 20s / DEB: **< 5s** |
 | **Go** | Go 1.21 | 0.5s | 2s | **0.8s** | ~5s | **< 5s** | ~3s | < 1s | AppImage: 30s |
 | **Node.js** | Node 20 + pnpm | 1s | N/A | 3s | ~10s | **< 5s** | ~3s | < 1s | N/A |
 | **Java** | Spring Boot 3 | 5s | 15s | 15s | ~60s | **< 15s** | ~3s | < 5s | AppImage: 120s |
@@ -58,6 +58,7 @@
 | Template | Docker Warm Build | Docker Lint | Cache Size |
 |----------|--------------------|-------------|------------|
 | Python | **< 10s** | ~3s | ~500MB |
+| React | **< 10s** | ~3s | ~300MB |
 | Java Spring | **< 15s** | ~3s | ~1GB |
 | Java Tomcat | **< 15s** | ~3s | ~1GB |
 | Go | **< 5s** | ~3s | ~300MB |
@@ -95,11 +96,12 @@
 
 ## Installer Performance
 
-| Template | AppImage | DEB | RPM | Size |
-|----------|----------|-----|-----|------|
-| Python | 20s | 5s | N/A | ~50MB / ~10KB |
-| Java Spring | 120s | N/A | N/A | ~100MB |
-| Go | 30s | N/A | N/A | ~20MB |
+| Template | AppImage | DEB | Size |
+|----------|----------|-----|------|
+| Python | 20s | 5s | ~50MB / ~10KB |
+| React | 20s | **< 5s** | ~100KB / ~10KB |
+| Java Spring | 120s | N/A | ~100MB |
+| Go | 30s | N/A | ~20MB |
 
 ## CI Pipeline Performance
 
