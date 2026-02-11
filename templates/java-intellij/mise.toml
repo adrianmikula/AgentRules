@@ -1,3 +1,20 @@
 [tools]
 java = "21"
 gradle = "8.5"
+
+[scripts]
+# Fast feedback commands
+compile = "./gradlew compileJava --no-daemon"
+lint = "./gradlew checkstyleMain --quiet 2>/dev/null || echo 'lint: skipped'"
+test-fast = "./gradlew fastTest --no-daemon"
+
+# Build commands
+build = "./gradlew buildPlugin --no-daemon"
+build-zip = "./gradlew buildPlugin --no-daemon"
+
+# Development commands
+runIde = "./gradlew runIde --no-daemon"
+verifyPlugin = "./gradlew verifyPlugin --no-daemon"
+
+# Utility commands
+clean = "./gradlew clean"

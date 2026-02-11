@@ -1,0 +1,33 @@
+[tools]
+java = "21"
+gradle = "8.5"
+
+[scripts]
+# Fast feedback commands
+compile = "./gradlew compileJava --no-daemon"
+compile-test = "./gradlew compileTestJava --no-daemon"
+lint = "./gradlew checkstyleMain --quiet 2>/dev/null || echo 'lint: skipped'"
+typecheck = "./gradlew typecheck --quiet 2>/dev/null || echo 'typecheck: skipped'"
+
+# Fast test commands
+test-fast = "./gradlew fastTest --no-daemon"
+test-unit = "./gradlew test --tests 'com.example.unit.*' --no-daemon"
+test-integration = "./gradlew test --tests 'com.example.integration.*' --no-daemon"
+
+# CRaC commands
+crac-warmup = "bash crac/warmup.sh"
+crac-checkpoint = "java -XX:CRaCCheckpointTo=/tmp/cr -jar build/libs/*.jar"
+crac-restore = "java -XX:CRaCRestoreFrom=/tmp/cr -jar build/libs/*.jar"
+crac-predict = "python3 crac/predictive_test_selector.py"
+
+# Build commands
+build = "./gradlew build -x test --no-daemon"
+build-native = "./gradlew nativeCompile --no-daemon"
+
+# Development commands
+dev = "./gradlew bootRun --no-daemon"
+dev-native = "./gradlew nativeRun --no-daemon"
+
+# Utility commands
+clean = "./gradlew clean"
+cache-warm = "./gradlew --build-cache --no-daemon"

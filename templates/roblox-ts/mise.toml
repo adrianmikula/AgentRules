@@ -1,0 +1,26 @@
+[tools]
+node = "20"
+lua = "5.4"
+
+[scripts]
+# Fast feedback commands
+lint = "selene src/ tests/"
+lint-fix = "selene src/ tests/ --fix"
+typecheck = "rbx-tsc --noEmit"
+compile = "rbx-tsc"
+test-fast = "jest --testPathPattern=tests/unit --no-coverage"
+
+# Full test commands
+test-full = "jest --no-coverage"
+test-contract = "jest --testPathPattern=tests/contract"
+
+# Development commands
+dev = "rojo serve"
+build = "rojo build --output build.rbxlx"
+package = "npm run package"
+
+# Utility commands
+clean = "rm -rf out node_modules/.cache"
+install = "npm install"
+install-dev = "npm install"
+format = "stylua src/ --check"
