@@ -180,6 +180,14 @@ mise install
 mise run install-dev
 ```
 
+### AppImage build (Linux)
+```bash
+mise run build-appimage   # Build python-boilerplate-1.0.0-x86_64.AppImage
+mise run verify-appimage  # Run built AppImage --version
+mise run benchmark        # Lint + typecheck + tests + verify AppImage
+```
+**System deps:** `binutils` (for `objdump`; e.g. `apt install binutils`). On shared drives that disallow symlinks, the script uses a venv in `/tmp` automatically.
+
 ## Agent Rules
 
 1. **Always run `mise run fast-test` after code changes**

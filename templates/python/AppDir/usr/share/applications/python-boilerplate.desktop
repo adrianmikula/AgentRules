@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Python Boilerplate
+Comment=Python application with fast agent loop
+Exec=python-boilerplate
+Icon=python-boilerplate
+Terminal=true
+Type=Application
+Categories=Development;

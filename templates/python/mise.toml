@@ -1,20 +1,25 @@
 [tools]
 python = "3.12"
 
-[commands]
-# Fast feedback commands (agents should run these first)
+[tasks]
+# Fast feedback (agents should run these first)
 lint = "ruff check src/ tests/unit/ tests/contract/"
 lint-fix = "ruff check src/ tests/unit/ tests/contract/ --fix"
 typecheck = "mypy src/"
 fast-test = "pytest tests/unit tests/contract -v --tb=short"
 
-# Development commands
+# Development
 dev = "python -m src.app.main"
 
-# CI commands (slow, not for local iteration)
+# CI (slow, not for local iteration)
 test-full = "pytest tests/ -v --tb=short"
 
-# Utility commands
-clean = "rm -rf .mypy_cache .pytest_cache __pycache__ src/**/__pycache__"
+# Utility
+clean = "rm -rf .mypy_cache .pytest_cache __pycache__ src/**/__pycache__ dist/ build/ AppDir/"
 install = "uv sync"
 install-dev = "uv sync --extra dev"
+
+# AppImage (Linux installer)
+build-appimage = "bash scripts/build-appimage.sh"
+verify-appimage = "bash -c '[ -f python-boilerplate-1.0.0-x86_64.AppImage ] && ( T=/tmp/verify-appimage-$$.AppImage; cp python-boilerplate-1.0.0-x86_64.AppImage \"$T\"; chmod +x \"$T\"; \"$T\" --appimage-extract-and-run --version; rm -f \"$T\" ) || echo \"Build first: mise run build-appimage\"'"
+benchmark = "uv run ruff check src/ tests/unit/ tests/contract/ && uv run mypy src/ && uv run pytest tests/unit tests/contract -v --tb=short && mise run verify-appimage"
